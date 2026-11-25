@@ -1,0 +1,63 @@
+-- MySQL dump 10.13  Distrib 8.0.46, for Win64 (x86_64)
+--
+-- Host: localhost    Database: ai_rescheduling
+-- ------------------------------------------------------
+-- Server version	8.0.46
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `appointments`
+--
+
+DROP TABLE IF EXISTS `appointments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `appointments` (
+  `id` varchar(50) NOT NULL,
+  `patient_name` varchar(255) DEFAULT NULL,
+  `appointment_type` enum('ROUTINE','URGENT','FOLLOW_UP') NOT NULL,
+  `provider_id` varchar(50) NOT NULL,
+  `slot_id` varchar(50) NOT NULL,
+  `status` enum('CONFIRMED','RESCHEDULE_PENDING','RESCHEDULED','COMPLETED') NOT NULL,
+  `version` bigint NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_appointment_slot` (`slot_id`),
+  KEY `idx_appointments_status` (`status`),
+  KEY `idx_appointments_provider_status` (`provider_id`,`status`),
+  CONSTRAINT `fk_appointment_provider` FOREIGN KEY (`provider_id`) REFERENCES `providers` (`id`),
+  CONSTRAINT `fk_appointment_slot` FOREIGN KEY (`slot_id`) REFERENCES `slots` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `appointments`
+--
+
+LOCK TABLES `appointments` WRITE;
+/*!40000 ALTER TABLE `appointments` DISABLE KEYS */;
+INSERT INTO `appointments` VALUES ('APT-001','John Martinez','ROUTINE','PRV-004','SLT-007','RESCHEDULED',0,'2026-11-25 17:08:48','2026-11-25 18:05:26'),('APT-002','Emily Watson','FOLLOW_UP','PRV-003','SLT-003','RESCHEDULED',0,'2026-11-25 17:08:48','2026-11-25 18:34:36'),('APT-003','Aisha Patel','URGENT','PRV-005','SLT-004','RESCHEDULED',0,'2026-11-25 17:08:48','2026-11-25 18:05:48'),('APT-004','Robert Kim','ROUTINE','PRV-004','SLT-005','RESCHEDULED',0,'2026-11-25 17:08:48','2026-11-25 17:08:48'),('APT-005','Maria Garcia','FOLLOW_UP','PRV-002','SLT-011','COMPLETED',0,'2026-11-25 17:08:48','2026-11-25 17:08:48'),('DEMO-APT-001','Olivia Thompson','ROUTINE','DEMO-PRV-001','DEMO-SLT-001','RESCHEDULE_PENDING',0,'2026-11-25 18:45:20','2026-11-25 18:45:20'),('DEMO-APT-002','Ethan Williams','URGENT','DEMO-PRV-004','DEMO-SLT-007','RESCHEDULE_PENDING',0,'2026-11-25 18:45:20','2026-11-25 18:45:20'),('DEMO-APT-003','Sophia Martinez','FOLLOW_UP','DEMO-PRV-003','DEMO-SLT-005','RESCHEDULE_PENDING',0,'2026-11-25 18:45:20','2026-11-25 18:45:20'),('DEMO-APT-004','Noah Johnson','ROUTINE','DEMO-PRV-001','DEMO-SLT-006','RESCHEDULE_PENDING',0,'2026-11-25 18:45:20','2026-11-25 18:45:20'),('DEMO-APT-005','Ava Brown','ROUTINE','DEMO-PRV-002','DEMO-SLT-008','RESCHEDULE_PENDING',0,'2026-11-25 18:45:20','2026-11-25 18:45:20');
+/*!40000 ALTER TABLE `appointments` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2026-11-25 18:55:43
