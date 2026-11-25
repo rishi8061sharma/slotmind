@@ -459,3 +459,154 @@ Stop existing processes using ports `5173` and `8080`, then restart both applica
 ### Schema mismatch after model changes
 
 For development, either run the schema script against a clean database or use the existing Hibernate update behavior. Do not run the reset seed script against data that must be preserved.
+## LiteLLM configuration
+
+The Python gateway can call the LiteLLM-compatible endpoint configured by environment variables. The bearer token is intentionally not stored in this repository.
+
+```powershell
+cd python-ai-gateway
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+
+$env:LITELLM_URL="https://litellm-qc.zycus.net/v1/chat/completions"
+$env:LITELLM_API_KEY="your-rotated-token"
+$env:LITELLM_MODEL="gpt-5.6-luna-azure-payg-global"
+$env:LITELLM_PRODUCT="PC1"
+
+python -m uvicorn app:app --host 0.0.0.0 --port 8001
+```
+
+The same values are documented in:
+
+```text
+python-ai-gateway/.env.example
+```
+
+Never commit a real API key. If a key is pasted into chat, source code, a terminal log, or a repository, rotate it immediately.
+
+The Python gateway sends trigger-specific instructions:
+
+- `PROVIDER_OFFLINE`: alternate providers are allowed.
+- `SLOT_CANCELLED`: prefer a new slot with the original provider.
+- Other triggers: choose the nearest suitable available slot.
+
+If LiteLLM is unavailable, the Python service and Java AI strategy fall back to rule-based scheduling.
+
+## Frontend workflow
+
+The React dashboard is the front-desk queue at `http://localhost:5173`.
+
+It provides:
+
+- Pending rescheduling queue as the primary view
+- Provider-offline, slot-cancelled, and manual badges
+- Original and suggested appointment comparison
+- Confidence and patient-friendly reasoning
+- Accept and Reject actions
+- Loading, error, and conflict states
+- Background polling without overlapping requests
+- Abortable requests during navigation
+- Responsive layouts for mobile and desktop
+
+The frontend calls the Spring Boot API through:
+
+```text
+VITE_API_BASE_URL=http://localhost:8080/slotmind
+```
+
+The backend allows CORS from `localhost:5173` and `127.0.0.1:5173`.
+
+## API verification checklist
+
+```text
+GET   /slotmind/appointments?status=RESCHEDULE_PENDING
+PATCH /slotmind/providers/{id}/status
+PATCH /slotmind/slots/{id}/status
+POST  /slotmind/appointments/{id}/suggest
+PATCH /slotmind/suggestions/{id}
+POST  /slotmind/appointments/{id}/suggest/stream
+```
+
+Expected error contracts:
+
+- Invalid provider or slot status: `400 Bad Request`
+- Unknown provider, slot, or appointment: `404 Not Found`
+- Invalid or repeated suggestion transition: `409 Conflict`
+
+Successful SSE events are `reasoning`, `recommendation`, and `complete`. When AI fallback is used, an `error` event is emitted before the fallback recommendation.
+
+## Current verified commands
+
+```bash
+cd backend && mvn clean package -DskipTests
+cd frontend && npm run build
+cd python-ai-gateway && python -m py_compile app.py
+```
+
+The frontend uses React 18 with the stable Vite 5 toolchain. The Python gateway uses FastAPI, Uvicorn, Pydantic, and HTTPX.
+## Latest AI/LLM verification
+
+The Python gateway now integrates with the LiteLLM-compatible chat completions endpoint through `httpx`.
+
+The gateway health endpoint reports whether an LLM key is configured:
+
+```text
+GET http://localhost:8001/health
+```
+
+Without a key:
+
+```json
+{
+  "status": "UP",
+  "llmConfigured": false
+}
+```
+
+With a key configured:
+
+```json
+{
+  "status": "UP",
+  "llmConfigured": true
+}
+```
+
+The application never stores the bearer token in source code. Configure it only in the runtime environment:
+
+```powershell
+$env:LITELLM_URL="https://litellm-qc.zycus.net/v1/chat/completions"
+$env:LITELLM_API_KEY="your-rotated-key"
+$env:LITELLM_MODEL="gpt-5.6-luna-azure-payg-global"
+$env:LITELLM_PRODUCT="PC1"
+```
+
+The following behaviors are verified without a live LLM key through the deterministic fallback:
+
+- Offline providers are excluded.
+- Alternate providers are selected for `PROVIDER_OFFLINE`.
+- Same-provider preference is used for `SLOT_CANCELLED`.
+- Slots shorter than the required duration are excluded.
+- Patient-friendly fallback reasoning is returned.
+- Python and Java fallback behavior remain available during LLM outages.
+
+AI cases that require a real or mocked LLM response are:
+
+- Valid LLM slot response
+- Nonexistent or cancelled slot response
+- Nonexistent provider response
+- Timeout response
+- Invalid confidence response
+- Technical reasoning normalization
+
+For those cases, use a rotated key or inject a mock `LlmGateway` in automated tests. Never commit the real key or paste it into project files.
+
+## Service health checklist
+
+```text
+Spring Boot: http://localhost:8080/slotmind/actuator/health
+Python AI:   http://localhost:8001/health
+React UI:    http://localhost:5173
+```
+
+The Spring health endpoint must report both the application and MySQL database as `UP`. The Python health endpoint must report `status: UP` before AI recommendation testing.
